@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="bn">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#111827" />
+  <title>Daily Log</title>
+  <link rel="manifest" href="./manifest.webmanifest?v=20260203_1">
+  <link rel="icon" href="pwa-192.png">
+  <link rel="stylesheet" href="./styles.css?v=20260203_1" />
+</head>
+<body>
+  <div id="app">
+    <header class="appHeader">
+      <div class="titleWrap">
+        <div class="appTitle">Daily Log</div>
+        <div class="appSub" id="headerSub">Private • Offline</div>
+      </div>
+      <div class="hdrBtns"><button class="iconBtn" id="btnQuickSave" title="Quick Save last used">⬤</button><button class="iconBtn" id="btnLockNow" hidden title="Lock now">🔒</button></div>
+    </header>
+
+    </div>
+    </div>
+
+    <main class="main">
+      <!-- HOME -->
+      <section class="view" id="viewHome">
+        <div class="card">
+          <div class="cardTitle">Quick Incident</div>
+
+          <div class="grid2">
+            <div>
+              <label class="lbl">Started by</label>
+              <div class="chipRow" id="startedByChips"></div>
+            </div>
+            <div>
+              <label class="lbl">Intensity</label>
+              <div class="chipRow" id="intensityChips"></div>
+            </div>
+          </div>
+
+          <label class="lbl">Trigger/Topic</label>
+          <div class="chipRow wrap" id="triggerChips"></div>
+
+          <label class="lbl">What happened</label>
+          <div class="chipRow wrap" id="whatChips"></div>
+
+          <label class="lbl">Note (optional)</label>
+          <input id="noteInput" class="textInput" placeholder="1–2 লাইনে লিখুন..." />
+
+          <div class="row">
+            <button id="btnSaveIncident" class="primaryBtn">Save</button>
+            <button id="btnSaveAndSilent" class="secondaryBtn">Save + Start Silent</button>
+          </div>
+
+          <div class="sep"></div>
+
+          <div class="row">
+            <button id="btnStartSilent" class="warnBtn">Start Silent</button>
+            <button id="btnEndSilent" class="okBtn">End Silent</button>
+          </div>
+          <div class="tinyNote" id="silentStatus">Silent: —</div>
+        </div>
+
+        <div class="card">
+          <div class="cardTitle">Recent (Last 7)</div>
+          <div id="recentList" class="list"></div>
+        </div>
+      </section>
+
+      <!-- HISTORY -->
+      <section class="view" id="viewHistory" hidden>
+        <div class="card">
+          <div class="cardTitle">History</div>
+          <div class="row">
+            <select id="historyRange" class="select">
+              <option value="7">Last 7 days</option>
+              <option value="30">Last 30 days</option>
+              <option value="90">Last 90 days</option>
+              <option value="365">Last 12 months</option>
+              <option value="all">All</option>
+            </select>
+            <input id="historySearch" class="textInput" placeholder="Search note/trigger..." />
+          </div>
+          <div id="historyList" class="list"></div>
+        </div>
+      </section>
+
+      <!-- REPORTS -->
+      <section class="view" id="viewReports" hidden>
+        <div class="card">
+          <div class="cardTitle">Reports</div>
+          <div class="row">
+            <select id="reportRange" class="select">
+              <option value="week">This week</option>
+              <option value="month">This month</option>
+              <option value="year">This year</option>
+              <option value="90">Last 90 days</option>
+              <option value="all">All</option>
+            </select>
+          </div>
+
+          <div class="kpiGrid">
+            <div class="kpi">
+              <div class="kpiLabel">Incidents</div>
+              <div class="kpiVal" id="kpiIncidents">0</div>
+            </div>
+            <div class="kpi">
+              <div class="kpiLabel">Silent days (sum)</div>
+              <div class="kpiVal" id="kpiSilentDays">0</div>
+            </div>
+            <div class="kpi">
+              <div class="kpiLabel">Avg silent (days)</div>
+              <div class="kpiVal" id="kpiAvgSilent">0</div>
+            </div>
+            <div class="kpi">
+              <div class="kpiLabel">Longest silent</div>
+              <div class="kpiVal" id="kpiLongest">0</div>
+            </div>
+          </div>
+
+          <div class="sep"></div>
+
+          <div class="cardTitle small">Started by</div>
+          <div id="startedByStats" class="stats"></div>
+
+          <div class="cardTitle small">Top triggers</div>
+          <div id="triggerStats" class="stats"></div>
+        </div>
+      </section>
+
+      <!-- SETTINGS -->
+      <section class="view" id="viewSettings" hidden>
+        <div class="card">
+          <div class="cardTitle">Security</div>
+          <div class="row">
+            <button id="btnSetPin" class="secondaryBtn">Set / Change PIN</button>
+            <button id="btnShowRecovery" class="ghostBtn">Show Recovery Key</button>
+          </div>
+          <div class="tinyNote">Recovery Key দিয়ে PIN reset করা যাবে। এটা নিরাপদ জায়গায় লিখে রাখুন।</div>
+        </div>
+
+        <div class="card">
+          <div class="cardTitle">Triggers (editable)</div>
+          <div class="row">
+            <input id="newTrigger" class="textInput" placeholder="New trigger..." />
+            <button id="btnAddTrigger" class="primaryBtn">Add</button>
+          </div>
+          <div id="triggerManageList" class="list"></div>
+        </div>
+
+        <div class="card">
+          <div class="cardTitle">Backup</div>
+          <div class="row">
+            <button id="btnExport" class="secondaryBtn">Export (Encrypted)</button>
+            <button id="btnImport" class="secondaryBtn">Import</button>
+          </div>
+          <input id="importFile" type="file" accept=".json,.txt,application/json,text/plain" hidden />
+          <div class="tinyNote">Export করলে পাসফ্রেজ দিয়ে এনক্রিপ্টেড ফাইল ডাউনলোড হবে।</div>
+        </div>
+
+        <div class="card danger">
+          <div class="cardTitle">Danger Zone</div>
+          <div class="tinyNote">Clear all data করতে ৩টা চেক পূরণ করতে হবে।</div>
+          <div class="checks">
+            <label><input type="checkbox" id="chk1"> I understand all data will be deleted</label>
+            <label><input type="checkbox" id="chk2"> This cannot be undone</label>
+            <label><input type="checkbox" id="chk3"> I have a backup (optional)</label>
+          </div>
+          <button id="btnClearAll" class="dangerBtn" disabled>Clear all data</button>
+        </div>
+
+        <div class="footerNote">
+          Offline-first PWA • IndexedDB • Local-only by default
+        </div>
+      </section>
+    </main>
+
+    <nav class="bottomNav">
+      <button class="navBtn active" data-nav="Home">Home</button>
+      <button class="navBtn" data-nav="History">History</button>
+      <button class="navBtn" data-nav="Reports">Reports</button>
+      <button class="navBtn" data-nav="Settings">Settings</button>
+    </nav>
+  </div>
+
+  <div class="toast" id="toast" hidden></div>
+
+  <script src="./idb.js?v=20260203_1"></script>
+  <script src="./app.js?v=20260203_1"></script>
+
+  <script>
+    // Early binding fallback (in case app.js init is blocked by cached SW / partial load)
+    window.__earlyBindUnlock = true;
+    document.addEventListener('DOMContentLoaded', () => {
+      const btn = document.getElementById('btnUnlock');
+      if (btn && !btn.__bound) {
+        btn.__bound = true;
+        btn.addEventListener('click', () => {
+          // app.js defines unlockWithPIN; if missing, show basic hint
+          if (typeof unlockWithPIN === 'function') unlockWithPIN();
+          else alert('App script not loaded yet. Please refresh once.');
+        });
+      }
+    });
+  </script>
+</body>
+</html>
