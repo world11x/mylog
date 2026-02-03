@@ -500,7 +500,7 @@ function renderStatBars(containerSel, counts, total, limit=10){
 }
 
 /* ---------- Triggers manage ---------- */
-async function renderTriggerManager(){
+async async function renderTriggerManager(){
   const list = $("#triggerManageList");
   const triggers = await getSetting(SETTINGS_KEYS.triggers, DEFAULT_TRIGGERS);
   list.innerHTML = "";
@@ -565,13 +565,7 @@ async function rebuildHomeChips(){
 
 
 
-document.addEventListener("visibilitychange", async ()=>{
-  if (document.visibilityState === "hidden"){
-    sessionUnlocked = false;
-  }
-  if (document.visibilityState === "visible"){
-    await showLockIfNeeded();
-  }
+}
 });
 
 
@@ -588,5 +582,158 @@ async function setOrChangePIN(){
 async function resetPinWithRecovery(){
   toast("PIN disabled");
 }
-document.addEventListener("visibilitychange", ()=>{});
 /* ===== END ===== */
+
+
+
+/* ---------- APP BOOTSTRAP (NO PIN) ---------- */
+async function refreshAll(){
+  try{
+    await rebuildHomeChips();
+    await refreshHome();
+    await renderHistory();
+    await renderReports();
+    await renderTriggerManager();
+  }catch(e){
+    console.error(e);
+    toast("Error: " + (e && e.message ? e.message : e));
+  }
+}
+
+async function doExport(){
+  const pass = prompt("Export password দিন (মনে রাখবেন):");
+  if (!pass) return;
+  const data = {
+    incidents: await IDBStore.getAll("incidents"),
+    silent: await IDBStore.getAll("silent"),
+    settings: await IDBStore.getAll("settings"),
+    exportedAt: Date.now(),
+    app: "daily-log"
+  };
+  const enc = await encryptJSON(data, pass);
+  const blob = new Blob([JSON.stringify(enc)], {type:"application/json"});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "dailylog-backup.json";
+  a.click();
+  URL.revokeObjectURL(a.href);
+  toast("Exported");
+}
+
+async function doImport(){
+  const inp = $("#importFile");
+  if (!inp.files || !inp.files[0]){ toast("Select file"); return; }
+  const pass = prompt("Import password দিন:");
+  if (!pass) return;
+  const text = await inp.files[0].text();
+  let payload;
+  try{ payload = JSON.parse(text); }catch(e){ toast("Invalid file"); return; }
+  let data;
+  try{ data = await decryptJSON(payload, pass); }catch(e){ toast("Wrong password / corrupted"); return; }
+
+  // reset then restore
+  await IDBStore.resetAll();
+  for (const it of (data.settings||[])) await IDBStore.put("settings", it);
+  for (const it of (data.incidents||[])) await IDBStore.put("incidents", it);
+  for (const it of (data.silent||[])) await IDBStore.put("silent", it);
+  toast("Imported");
+  inp.value = "";
+  await ensureDefaults();
+  await refreshAll();
+  switchView("Home");
+}
+
+async function clearAllData(){
+  if (!$("#chk1").checked || !$("#chk2").checked || !$("#chk3").checked){
+    toast("Tick all 3 boxes");
+    return;
+  }
+  if (!confirm("সব ডাটা ডিলিট হবে. নিশ্চিত?")) return;
+  await IDBStore.resetAll();
+  toast("Cleared");
+  $("#chk1").checked = $("#chk2").checked = $("#chk3").checked = false;
+  await ensureDefaults();
+  await refreshAll();
+  switchView("Home");
+}
+
+function wireUI(){
+  // bottom nav
+  $$(".navBtn").forEach(btn=>{
+    btn.addEventListener("click", async ()=>{
+      const name = btn.dataset.nav;
+      switchView(name);
+      if (name==="Home") await refreshHome();
+      if (name==="History") await renderHistory();
+      if (name==="Reports") await renderReports();
+      if (name==="Settings") await renderTriggerManager();
+    });
+  });
+
+  // home actions
+  $("#btnSaveIncident").addEventListener("click", saveIncident);
+  $("#btnSaveAndSilent").addEventListener("click", async ()=>{
+    await saveIncident();
+    await startSilent();
+  });
+  $("#btnStartSilent").addEventListener("click", startSilent);
+  $("#btnEndSilent").addEventListener("click", endSilent);
+  $("#btnQuickSave").addEventListener("click", async ()=>{
+    // quick save uses lastQuick if available
+    const last = await getSetting(SETTINGS_KEYS.lastQuick, null);
+    if (!last){ toast("No quick preset"); return; }
+    state.startedBy = last.startedBy;
+    state.intensity = last.intensity;
+    state.trigger = last.trigger;
+    state.what = last.what || ["Argument"];
+    $("#noteInput").value = last.note || "";
+    await saveIncident();
+  });
+
+  // history
+  $("#historyRange").addEventListener("change", renderHistory);
+  $("#historySearch").addEventListener("input", ()=>{ clearTimeout(wireUI._hs); wireUI._hs=setTimeout(renderHistory,150); });
+
+  // reports
+  $("#reportRange").addEventListener("change", renderReports);
+
+  // trigger manager
+  $("#btnAddTrigger").addEventListener("click", async ()=>{
+    const t = $("#newTrigger").value.trim();
+    if (!t) return;
+    const arr = await getSetting(SETTINGS_KEYS.triggers, DEFAULT_TRIGGERS);
+    if (!arr.includes(t)) arr.push(t);
+    await setSetting(SETTINGS_KEYS.triggers, arr);
+    $("#newTrigger").value = "";
+    toast("Added");
+    await refreshAll();
+  });
+
+  // data management
+  $("#btnExport").addEventListener("click", doExport);
+  $("#btnImport").addEventListener("click", doImport);
+  $("#btnClearAll").addEventListener("click", clearAllData);
+
+  // PIN buttons now disabled
+  $("#btnSetPin").addEventListener("click", ()=>toast("PIN disabled"));
+  $("#btnShowRecovery").addEventListener("click", ()=>toast("PIN disabled"));
+}
+
+async function boot(){
+  await IDBStore.openDB();
+  await ensureDefaults();
+  // always unlocked (no PIN)
+  state.unlocked = true;
+
+  wireUI();
+  switchView("Home");
+  await refreshAll();
+}
+
+document.addEventListener("DOMContentLoaded", ()=>{
+  boot().catch(e=>{
+    console.error(e);
+    toast("Boot error: " + (e && e.message ? e.message : e));
+  });
+});
+/* ---------- END BOOTSTRAP ---------- */

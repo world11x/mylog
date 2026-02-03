@@ -1,4 +1,4 @@
-const CACHE_NAME = "daily-log-nopin";
+const CACHE_NAME = "mylog-nopin-fix-20260203";
 const ASSETS = [
   "./",
   "./index.html",
